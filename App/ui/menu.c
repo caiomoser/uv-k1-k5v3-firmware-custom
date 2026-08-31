@@ -30,6 +30,9 @@
 #include "../font.h"
 #include "../frequencies.h"
 #include "../helper/battery.h"
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    #include "../helper/morse.h"
+#endif
 #include "../misc.h"
 #include "../settings.h"
 
@@ -94,6 +97,10 @@ const t_menu_item MenuList[] =
     {"MicBar",      MENU_MIC_BAR       },
     {"ChDisp",      MENU_MDF           }, // was "MDF"
     {"POnMsg",      MENU_PONMSG        },
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    {"POnCW",       MENU_PON_MORSE     },
+    {"MsgCW",       MENU_MSG_CW_EDIT   },
+#endif
     {"BLTime",      MENU_ABR           }, // was "ABR"
     {"BLMin",       MENU_ABR_MIN       },
     {"BLMax",       MENU_ABR_MAX       },
@@ -528,6 +535,9 @@ const t_sidefunction gSubMenu_SIDEFUNCTIONS[] =
     #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
         {"FOX HUNT\nBEACON", ACTION_OPT_FOXHUNT},
     #endif
+    #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        {"MORSE\nID EDIT",   ACTION_OPT_MORSE_MSG},
+    #endif
 #endif
 };
 
@@ -621,7 +631,11 @@ static const uint8_t CatPower[]   = {
     MENU_SET_SAV,
 #endif
 };
-static const uint8_t CatDisplay[] = { MENU_MDF, MENU_PONMSG, MENU_ABR, MENU_ABR_MIN, MENU_ABR_MAX, MENU_ABR_ON_TX_RX, MENU_SET_CTR, MENU_SET_INV, MENU_SET_MET, MENU_SET_GUI, MENU_VOL };
+static const uint8_t CatDisplay[] = { MENU_MDF, MENU_PONMSG,
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    MENU_PON_MORSE, MENU_MSG_CW_EDIT,
+#endif
+    MENU_ABR, MENU_ABR_MIN, MENU_ABR_MAX, MENU_ABR_ON_TX_RX, MENU_SET_CTR, MENU_SET_INV, MENU_SET_MET, MENU_SET_GUI, MENU_VOL };
 static const uint8_t CatTimers[]  = { MENU_TOT, MENU_SET_TOT, MENU_SET_EOT, MENU_SET_TMR };
 static const uint8_t CatAudio[]   = {
     MENU_MIC, MENU_MIC_BAR, MENU_BEEP,
@@ -1161,8 +1175,20 @@ void UI_DisplayMenu(void)
         case MENU_SET_TMR:
         case MENU_S_PRI:
 #endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_PON_MORSE:
+#endif
             strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
             break;
+
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_MSG_CW_EDIT: {
+            char msg[MORSE_MSG_MAX + 1];
+            MORSE_LoadMessage(msg);
+            strcpy(String, msg[0] ? msg : "EMPTY");
+            break;
+        }
+#endif
 
 #if defined(ENABLE_FEAT_F4HWN) && defined(ENABLE_FEAT_F4HWN_LOGO_SAV)
         case MENU_SET_SAV:

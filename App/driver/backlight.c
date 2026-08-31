@@ -30,6 +30,9 @@
     #include "audio.h"
     #include "misc.h"
 #endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    #include "helper/morse.h"
+#endif
 
 #define PWM_FREQ 4000
 // 32 levels keep every step of the value[] table distinct after
@@ -127,8 +130,15 @@ static void BACKLIGHT_Sound(void)
 #endif
     )
     {
-        AUDIO_PlayBeep(BEEP_880HZ_60MS_TRIPLE_BEEP);
-        AUDIO_PlayBeep(BEEP_880HZ_60MS_TRIPLE_BEEP);
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        if (gEeprom.BOOT_MORSE) {
+            MORSE_PlayBootId();
+        } else
+#endif
+        {
+            AUDIO_PlayBeep(BEEP_880HZ_60MS_TRIPLE_BEEP);
+            AUDIO_PlayBeep(BEEP_880HZ_60MS_TRIPLE_BEEP);
+        }
     }
 
     gK5startup = false;

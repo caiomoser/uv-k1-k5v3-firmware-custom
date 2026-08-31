@@ -32,6 +32,9 @@
 #include "driver/keyboard.h"
 #include "frequencies.h"
 #include "helper/battery.h"
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    #include "helper/morse.h"
+#endif
 #include "misc.h"
 #include "settings.h"
 #include "../driver/st7565.h"
@@ -260,6 +263,9 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 #ifdef ENABLE_FEAT_F4HWN
         case MENU_SET_TMR:
         case MENU_S_PRI:
+#endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_PON_MORSE:
 #endif
             //*pMin = 0;
             *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
@@ -698,6 +704,12 @@ void MENU_AcceptSetting(void)
         case MENU_BEEP:
             gEeprom.BEEP_CONTROL = gSubMenuSelection;
             break;
+
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_PON_MORSE:
+            gEeprom.BOOT_MORSE = gSubMenuSelection;
+            break;
+#endif
 
         case MENU_TOT:
             gEeprom.TX_TIMEOUT_TIMER = gSubMenuSelection;
@@ -1221,6 +1233,12 @@ void MENU_ShowCurrentSetting(void)
         case MENU_BEEP:
             gSubMenuSelection = gEeprom.BEEP_CONTROL;
             break;
+
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_PON_MORSE:
+            gSubMenuSelection = gEeprom.BOOT_MORSE;
+            break;
+#endif
 
         case MENU_TOT:
             gSubMenuSelection = gEeprom.TX_TIMEOUT_TIMER;
@@ -1930,6 +1948,13 @@ static void MENU_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 #endif
             )
             return;
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        if (m == MENU_MSG_CW_EDIT) {
+            MORSE_EditMessage();       // owns the screen/keypad until EXIT/save
+            UI_DisplayMenu();          // repaint the menu (preview text may have changed)
+            return;
+        }
+#endif
         #if 1
             if (m == MENU_DEL_CH || m == MENU_MEM_NAME)
                 if (!RADIO_CheckValidChannel(gSubMenuSelection, false, 0))

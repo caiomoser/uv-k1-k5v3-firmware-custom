@@ -24,6 +24,9 @@
 #include "driver/bk1080.h"
 #include "driver/bk4819.h"
 #include "driver/py25q16.h"
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    #include "helper/morse.h"
+#endif
 #include "misc.h"
 #include "settings.h"
 #include "ui/menu.h"
@@ -510,6 +513,14 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
         // And set special session settings for actions
         gSetting_set_ptt_session = gSetting_set_ptt;
     #endif
+
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    {
+        uint8_t morseEnabled = 0;
+        PY25Q16_ReadBuffer(MORSE_FLASH_ADDR, &morseEnabled, 1);
+        gEeprom.BOOT_MORSE = (morseEnabled == 1);
+    }
+#endif
 }
 
 void SETTINGS_LoadCalibration(void)
@@ -1152,6 +1163,13 @@ void SETTINGS_SaveSettings(void)
 
 #ifdef ENABLE_FEAT_F4HWN_VOL
     SETTINGS_WriteCurrentVol();
+#endif
+
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    {
+        const uint8_t morseEnabled = gEeprom.BOOT_MORSE ? 1 : 0;
+        PY25Q16_WriteBuffer(MORSE_FLASH_ADDR, &morseEnabled, 1, false);
+    }
 #endif
 }
 

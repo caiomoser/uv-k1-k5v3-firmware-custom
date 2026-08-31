@@ -136,6 +136,9 @@ enum ACTION_OPT_t {
 #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
     ACTION_OPT_FOXHUNT,
 #endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    ACTION_OPT_MORSE_MSG,
+#endif
     ACTION_OPT_LEN
 };
 
@@ -214,6 +217,9 @@ typedef struct {
     VOICE_Prompt_t    VOICE_PROMPT;
 #endif
     bool                  BEEP_CONTROL;
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    bool                  BOOT_MORSE;
+#endif
     uint8_t               CHANNEL_DISPLAY_MODE;
     bool                  TAIL_TONE_ELIMINATION;
     bool                  VFO_OPEN;

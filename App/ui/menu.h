@@ -97,6 +97,10 @@ enum
 #endif
     MENU_D_LIVE_DEC,
     MENU_PONMSG,
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    MENU_PON_MORSE,
+    MENU_MSG_CW_EDIT,
+#endif
     MENU_ROGER,
     MENU_VOL,
     MENU_BAT_TXT,

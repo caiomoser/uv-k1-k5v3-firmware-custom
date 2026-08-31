@@ -51,6 +51,9 @@
 #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
     #include "app/foxhunt.h"
 #endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    #include "helper/morse.h"
+#endif
 #ifdef ENABLE_FEAT_F4HWN_ACTION_PICKER
     #include "ui/menu.h"
 #endif
@@ -145,6 +148,9 @@ void (*const action_opt_table[])(void) = {
 #endif
 #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
     [ACTION_OPT_FOXHUNT] = &ACTION_FoxHunt,
+#endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+    [ACTION_OPT_MORSE_MSG] = &ACTION_MorseMsgEdit,
 #endif
 };
 
@@ -331,6 +337,9 @@ inline static bool ACTION_IsBlockedInFM(uint8_t action)
 #endif
 #ifdef ENABLE_FEAT_F4HWN_FOXHUNT
         case ACTION_OPT_FOXHUNT:
+#endif
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case ACTION_OPT_MORSE_MSG:
 #endif
             return true;
 
