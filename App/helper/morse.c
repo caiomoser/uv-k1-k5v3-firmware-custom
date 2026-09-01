@@ -165,8 +165,11 @@ static void MORSE_DrawEditor(const char *buf, uint8_t cursor)
         gFrameBuffer[3][x] ^= 0xFF;
 
     UI_PrintStringSmallNormal("UP/DN=CHAR MENU=NEXT", 4, 0, 5);
-    UI_PrintStringSmallNormal("EXIT=BACK/CANCEL",     4, 0, 6);
+    UI_PrintStringSmallNormal("EXIT=BACK HOLD=SAVE",  4, 0, 6);
 }
+
+// Same long-press threshold as the firmware's key-repeat delay (misc.c).
+#define MORSE_HOLD_10MS 40
 
 void MORSE_EditMessage(void)
 {
@@ -193,7 +196,35 @@ void MORSE_EditMessage(void)
         kbd.prev    = kbd.current;
         kbd.current = KEYBOARD_GetKey();
 
-        if (kbd.current == KEY_INVALID || kbd.current == kbd.prev) {
+        if (kbd.current == KEY_INVALID) {
+            // EXIT released before reaching the long-press threshold below:
+            // treat it as a short press now (step back, or cancel at cursor 0).
+            if (kbd.prev == KEY_EXIT && kbd.counter > 0 && kbd.counter < MORSE_HOLD_10MS) {
+                if (cursor == 0)
+                    break;                  // cancel: discard and leave
+                cursor--;
+            }
+            kbd.counter = 0;
+            SYSTEM_DelayMs(10);
+            BACKLIGHT_Update();
+            continue;
+        }
+
+        kbd.counter = (kbd.current == kbd.prev) ? (uint8_t)(kbd.counter + 1) : 1;
+
+        if (kbd.current == KEY_EXIT) {
+            // EXIT's action depends on how long it's held (see above / below),
+            // so it's never handled on the immediate press edge like the others.
+            if (kbd.counter == MORSE_HOLD_10MS) {   // held long enough: confirm & save here
+                saved = true;
+                break;
+            }
+            SYSTEM_DelayMs(10);
+            BACKLIGHT_Update();
+            continue;
+        }
+
+        if (kbd.current == kbd.prev) {   // UP/DOWN/MENU held: no repeat, ignore
             SYSTEM_DelayMs(10);
             BACKLIGHT_Update();
             continue;
@@ -212,10 +243,6 @@ void MORSE_EditMessage(void)
                 saved = true;               // confirmed past the last character
                 break;
             }
-        } else if (kbd.current == KEY_EXIT) {
-            if (cursor == 0)
-                break;                      // cancel: discard and leave
-            cursor--;
         }
     }
 
@@ -225,6 +252,14 @@ void MORSE_EditMessage(void)
         MORSE_SaveMessage(buf);
         MORSE_PlayText(buf);                // preview so the user can check it right away
     }
+
+    // We consumed EXIT/MENU presses internally above, so the caller's own key
+    // dispatcher never saw them. If the long-press that just confirmed a save
+    // is still physically held when we return, that dispatcher would treat it
+    // as a brand-new press and start its own repeat-fire (e.g. backing out of
+    // several menu levels). Wait it out before handing control back.
+    while (KEYBOARD_GetKey() != KEY_INVALID)
+        SYSTEM_DelayMs(10);
 }
 
 void ACTION_MorseMsgEdit(void)

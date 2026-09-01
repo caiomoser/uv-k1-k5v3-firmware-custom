@@ -43,8 +43,10 @@ void MORSE_SaveMessage(const char *msg);
 void MORSE_PlayText(const char *msg);
 
 // Self-contained modal editor for the boot message: UP/DOWN cycles the character
-// at the cursor, MENU advances the cursor (saving once past the last one), EXIT
-// steps back (cancelling at position 0). Owns the screen and keypad until done.
+// at the cursor, MENU advances the cursor (saving once past the last one), a
+// short EXIT steps back (cancelling at position 0), and a long-press EXIT
+// confirms & saves immediately from any position. Owns the screen and keypad
+// until done.
 void MORSE_EditMessage(void);
 
 // Wired as an assignable side-key action (see action.c) to open the editor.

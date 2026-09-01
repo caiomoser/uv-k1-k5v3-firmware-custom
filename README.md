@@ -233,7 +233,9 @@ Fusion is the reference edition of the project. It provides an all-in-one firmwa
   - `SetNFM`: narrow-FM bandwidth,
   - `SetVol`: RX audio volume,
   - `SetScn`: scan mode,
-  - `SetNav`: radio-specific navigation layout.
+  - `SetNav`: radio-specific navigation layout,
+  - `PonCW`: play a custom Morse-code ID message on power-on,
+  - `MsgCW`: edit the boot Morse ID message.
 - Improved `PonMsg`, `BackLt`, `TxTOut`, `ScnRev` and `KeyLck` menus.
 - Full VFO state restoration with a long press on `EXIT`.
 - Squelch changes made with `F + UP` or `F + DOWN` are persisted.
@@ -256,7 +258,8 @@ Fusion is the reference edition of the project. It provides an all-in-one firmwa
   - offset removal,
   - BEAM,
   - RF Log,
-  - Fox Hunt / Beacon.
+  - Fox Hunt / Beacon,
+  - Morse ID edit.
 
 ### Reliability and optimization
 
