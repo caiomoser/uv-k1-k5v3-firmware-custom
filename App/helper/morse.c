@@ -32,10 +32,14 @@
 #include "ui/helper.h"
 #include "ui/ui.h"
 
-// One Morse time unit; dah = 3 units, intra-element gap = 1 unit, inter-character
-// gap = 3 units (2 more after the unit already elapsed past the last element).
-#define MORSE_UNIT_MS 100
+// Tone pitch; the time unit comes from the selected speed (PARIS: 1200 / WPM ms).
+// dah = 3 units, intra-element gap = 1 unit, inter-character gap = 3 units (2 more
+// after the unit already elapsed past the last element).
 #define MORSE_TONE_HZ 750
+
+// Selectable speeds; index 0 (12 WPM, 100 ms unit) is the default and matches the
+// fixed speed of earlier builds.
+static const uint8_t MORSE_WPM[MORSE_WPM_COUNT] = { 12, 15, 20, 25 };
 
 // Sentinel-prefixed patterns: after the leading 1 sentinel bit, each lower bit is
 // one element read MSB-first (0 = dit, 1 = dah). Same encoding as the Fox Hunt
@@ -53,6 +57,9 @@ static const uint8_t MORSE_DIGIT[10] = {
 // Characters selectable in the editor, cycled by UP/DOWN at the cursor position.
 static const char MORSE_CHARSET[] = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+// Saved message, cached so menu redraws and boot playback don't hit the flash.
+static char MorseMsg[MORSE_MSG_MAX + 1];
+
 static uint8_t MORSE_ByteFor(char c)
 {
     if (c >= 'a' && c <= 'z') c -= 32;
@@ -61,34 +68,142 @@ static uint8_t MORSE_ByteFor(char c)
     return 0;
 }
 
-void MORSE_LoadMessage(char *out)
+// Copy raw flash bytes into out[MORSE_MSG_MAX + 1], stopping at the first NUL or
+// character outside the supported set (blank/corrupt flash). Returns the length.
+static uint8_t MORSE_Sanitize(const char *raw, char *out)
 {
-    char raw[MORSE_MSG_MAX + 1];
-    PY25Q16_ReadBuffer(MORSE_FLASH_ADDR + 1, raw, sizeof(raw));
-
     uint8_t i;
     for (i = 0; i < MORSE_MSG_MAX; i++) {
-        char c = raw[i];
-        if (c == 0)
-            break;
+        const char c = raw[i];
         if (c != ' ' && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9'))
-            break;                          // blank/corrupt flash -> stop here
+            break;
         out[i] = c;
     }
     out[i] = '\0';
+    return i;
+}
+
+// DTMF settings block (0ED0..0EDF) as SETTINGS_InitEEPROM defaults it: side tone on,
+// '*' / '#' codes, preload 300 ms, persist and interval times 100 ms, remote kill on.
+static const uint8_t MORSE_DTMF_DEFAULTS[16] = {
+    1, '*', '#', 0, 10, 30, 10, 10,
+    10, 10, 1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+
+static void MORSE_ResetDtmfSettings(void)
+{
+    gEeprom.DTMF_SIDE_TONE               = true;
+#ifdef ENABLE_DTMF_CALLING
+    gEeprom.DTMF_SEPARATE_CODE           = '*';
+    gEeprom.DTMF_GROUP_CALL_CODE         = '#';
+    gEeprom.DTMF_DECODE_RESPONSE         = 0;
+    gEeprom.DTMF_auto_reset_time         = 10;
+    gEeprom.PERMIT_REMOTE_KILL           = true;
+#endif
+    gEeprom.DTMF_PRELOAD_TIME            = 300;
+    gEeprom.DTMF_FIRST_CODE_PERSIST_TIME = 100;
+    gEeprom.DTMF_HASH_CODE_PERSIST_TIME  = 100;
+    gEeprom.DTMF_CODE_PERSIST_TIME       = 100;
+    gEeprom.DTMF_CODE_INTERVAL_TIME      = 100;
+}
+
+// Bytes from the old block to the end of the new one: both live in the settings
+// sector, so the move and the DTMF repair go out in a single sector rewrite.
+#define MORSE_MIGRATE_SPAN (MORSE_FLASH_ADDR + 16u - MORSE_OLD_FLASH_ADDR)
+
+// First run with the new layout: initialise the block (returned in block[16]) and,
+// if a message saved by an earlier build is found at the old address, carry it and
+// its enabled flag over and restore the DTMF settings it had overwritten.
+static void MORSE_Migrate(uint8_t *block)
+{
+    uint8_t buf[MORSE_MIGRATE_SPAN];
+    PY25Q16_ReadBuffer(MORSE_OLD_FLASH_ADDR, buf, sizeof(buf));
+
+    uint8_t *oldBlock = buf;
+    uint8_t *newBlock = buf + (MORSE_FLASH_ADDR - MORSE_OLD_FLASH_ADDR);
+
+    char msg[MORSE_MSG_MAX + 1];
+    const uint8_t len = MORSE_Sanitize((const char *)oldBlock + 1, msg);
+
+    // The old MORSE_SaveMessage wrote the text NUL-padded to MORSE_MSG_MAX + 1 bytes.
+    // Require exactly that shape so genuine DTMF settings are never taken for one.
+    bool found = len > 0;
+    for (uint8_t i = 1 + len; found && i <= MORSE_MSG_MAX + 1; i++)
+        if (oldBlock[i] != 0)
+            found = false;
+
+    memset(newBlock, 0xFF, 16);
+    newBlock[0] = (found && oldBlock[0] == 1) ? 1 : 0;
+    newBlock[1] = 0;
+    memset(newBlock + 2, 0, MORSE_MSG_MAX + 1);
+
+    if (found) {
+        memcpy(newBlock + 2, msg, len);
+        memcpy(oldBlock, MORSE_DTMF_DEFAULTS, sizeof(MORSE_DTMF_DEFAULTS));
+        MORSE_ResetDtmfSettings();
+    }
+
+    PY25Q16_WriteBuffer(MORSE_OLD_FLASH_ADDR, buf, sizeof(buf), false);
+    memcpy(block, newBlock, 16);
+}
+
+void MORSE_LoadSettings(void)
+{
+    uint8_t block[16];
+    PY25Q16_ReadBuffer(MORSE_FLASH_ADDR, block, sizeof(block));
+
+    if (block[0] == 0xFF)
+        MORSE_Migrate(block);
+
+    gEeprom.BOOT_MORSE     = (block[0] == 1);
+    gEeprom.BOOT_MORSE_WPM = (block[1] < MORSE_WPM_COUNT) ? block[1] : 0;
+    MORSE_Sanitize((const char *)block + 2, MorseMsg);
+}
+
+void MORSE_SaveSettings(void)
+{
+    const uint8_t state[2] = { gEeprom.BOOT_MORSE ? 1 : 0, gEeprom.BOOT_MORSE_WPM };
+    PY25Q16_WriteBuffer(MORSE_FLASH_ADDR, state, sizeof(state), false);
+}
+
+const char *MORSE_GetMessage(void)
+{
+    return MorseMsg;
 }
 
 void MORSE_SaveMessage(const char *msg)
 {
     char raw[MORSE_MSG_MAX + 1] = {0};
     strncpy(raw, msg, MORSE_MSG_MAX);
-    PY25Q16_WriteBuffer(MORSE_FLASH_ADDR + 1, raw, sizeof(raw), false);
+    PY25Q16_WriteBuffer(MORSE_FLASH_ADDR + 2, raw, sizeof(raw), false);
+    MORSE_Sanitize(raw, MorseMsg);
+}
+
+uint8_t MORSE_GetWpm(uint8_t index)
+{
+    return MORSE_WPM[index < MORSE_WPM_COUNT ? index : 0];
+}
+
+// Wait ms in 10 ms steps, polling the keypad; true as soon as a key is down.
+static bool MORSE_WaitAbortable(uint16_t ms)
+{
+    for (;;) {
+        if (KEYBOARD_Poll() != KEY_INVALID)
+            return true;
+        if (ms == 0)
+            return false;
+        const uint16_t step = (ms < 10) ? ms : 10;
+        SYSTEM_DelayMs(step);
+        ms -= step;
+    }
 }
 
 void MORSE_PlayText(const char *msg)
 {
     if (msg == NULL || msg[0] == '\0')
         return;
+
+    const uint16_t unit = 1200u / MORSE_GetWpm(gEeprom.BOOT_MORSE_WPM);
 
     // Same tone-generator save/restore sequence as AUDIO_PlayBeep (audio.c), so a
     // multi-character ID played at boot leaves the radio's RX state untouched.
@@ -99,26 +214,28 @@ void MORSE_PlayText(const char *msg)
     AUDIO_AudioPathOn();
     SYSTEM_DelayMs(60);
 
-    for (const char *p = msg; *p; p++) {
-        if (KEYBOARD_Poll() != KEY_INVALID)   // any keypress aborts the ID early
-            break;
+    // Any keypress aborts the ID; the keypad is checked through every gap, so the
+    // longest it can go unnoticed is one dah.
+    bool aborted = MORSE_WaitAbortable(0);
 
+    for (const char *p = msg; *p && !aborted; p++) {
         const uint8_t code = MORSE_ByteFor(*p);
 
         if (code == 0) {                      // space / unsupported -> word gap
-            SYSTEM_DelayMs(MORSE_UNIT_MS * 4); // 3 units already elapsed after the previous char
+            aborted = MORSE_WaitAbortable(unit * 4); // 3 units already elapsed after the previous char
             continue;
         }
 
         uint8_t bit = 0x80;
         while (!(code & bit)) bit >>= 1;      // skip to the sentinel bit
-        for (bit >>= 1; bit; bit >>= 1) {      // walk the elements, MSB first
-            const uint16_t on = (code & bit) ? (MORSE_UNIT_MS * 3)   // dah
-                                              :  MORSE_UNIT_MS;        // dit
+        for (bit >>= 1; bit && !aborted; bit >>= 1) {     // walk the elements, MSB first
+            const uint16_t on = (code & bit) ? (unit * 3)   // dah
+                                              :  unit;       // dit
             BK4819_PlayToneRaw(MORSE_TONE_HZ, on);
-            SYSTEM_DelayMs(MORSE_UNIT_MS);     // intra-element gap
+            aborted = MORSE_WaitAbortable(unit);            // intra-element gap
         }
-        SYSTEM_DelayMs(MORSE_UNIT_MS * 2);     // inter-character gap (3 units total)
+        if (!aborted)
+            aborted = MORSE_WaitAbortable(unit * 2);        // inter-character gap (3 units total)
     }
 
     AUDIO_AudioPathOff();
@@ -126,16 +243,22 @@ void MORSE_PlayText(const char *msg)
     BK4819_TurnsOffTones_TurnsOnRX();
     SYSTEM_DelayMs(5);
     BK4819_WriteRegister(BK4819_REG_71, toneConfig);
+
+    // Swallow the key that aborted playback, so it doesn't go on to trigger its
+    // normal function in whatever runs next.
+    if (aborted) {
+        while (KEYBOARD_Poll() != KEY_INVALID)
+            SYSTEM_DelayMs(10);
+    }
 }
 
-void MORSE_PlayBootId(void)
+bool MORSE_PlayBootId(void)
 {
-    if (!gEeprom.BOOT_MORSE)
-        return;
+    if (!gEeprom.BOOT_MORSE || MorseMsg[0] == '\0')
+        return false;
 
-    char msg[MORSE_MSG_MAX + 1];
-    MORSE_LoadMessage(msg);
-    MORSE_PlayText(msg);
+    MORSE_PlayText(MorseMsg);
+    return true;
 }
 
 // Wrap forward (dir > 0) or backward one step through MORSE_CHARSET, both ways round.
@@ -174,7 +297,7 @@ static void MORSE_DrawEditor(const char *buf, uint8_t cursor)
 void MORSE_EditMessage(void)
 {
     char buf[MORSE_MSG_MAX + 1];
-    MORSE_LoadMessage(buf);
+    strcpy(buf, MorseMsg);
 
     // Pad the field with spaces so every cursor position shows a selectable cell.
     for (uint8_t i = (uint8_t)strlen(buf); i < MORSE_MSG_MAX; i++)
@@ -183,15 +306,21 @@ void MORSE_EditMessage(void)
 
     uint8_t       cursor = 0;
     bool          saved  = false;
+    bool          redraw = true;
     KeyboardState kbd    = {KEY_INVALID, KEY_INVALID, 0};
 
     BACKLIGHT_UpdateTickless();
     BACKLIGHT_TurnOn();
 
     for (;;) {
-        MORSE_DrawEditor(buf, cursor);
-        ST7565_BlitStatusLine();
-        ST7565_BlitFullScreen();
+        // Only repaint when the field or cursor changed, instead of pushing the
+        // whole frame over SPI on every 10 ms poll.
+        if (redraw) {
+            MORSE_DrawEditor(buf, cursor);
+            ST7565_BlitStatusLine();
+            ST7565_BlitFullScreen();
+            redraw = false;
+        }
 
         kbd.prev    = kbd.current;
         kbd.current = KEYBOARD_GetKey();
@@ -203,6 +332,7 @@ void MORSE_EditMessage(void)
                 if (cursor == 0)
                     break;                  // cancel: discard and leave
                 cursor--;
+                redraw = true;
             }
             kbd.counter = 0;
             SYSTEM_DelayMs(10);
@@ -231,6 +361,7 @@ void MORSE_EditMessage(void)
         }
 
         BACKLIGHT_TurnOn();
+        redraw = true;
 
         if (kbd.current == KEY_UP) {
             buf[cursor] = MORSE_CycleChar(buf[cursor], +1);

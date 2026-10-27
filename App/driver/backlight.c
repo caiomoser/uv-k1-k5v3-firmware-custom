@@ -131,9 +131,7 @@ static void BACKLIGHT_Sound(void)
     )
     {
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
-        if (gEeprom.BOOT_MORSE) {
-            MORSE_PlayBootId();
-        } else
+        if (!MORSE_PlayBootId())   // falls back to the beep when off or the message is empty
 #endif
         {
             AUDIO_PlayBeep(BEEP_880HZ_60MS_TRIPLE_BEEP);

@@ -24,22 +24,43 @@
 // Maximum length of the boot Morse message (letters/digits/space), NUL excluded.
 #define MORSE_MSG_MAX 12
 
-// 16-byte gap between the welcome message (0x00A0C8..0x00A0E7, ui/welcome.c) and
-// the DTMF codes block (0x00A0F8.., settings.c). Byte 0 is the enabled flag,
-// loaded into gEeprom.BOOT_MORSE by settings.c; bytes 1..13 are the message
-// (MORSE_MSG_MAX chars + NUL), read/written by MORSE_LoadMessage/MORSE_SaveMessage;
-// bytes 14..15 are reserved.
-#define MORSE_FLASH_ADDR 0x00A0E8u
+// 16 bytes right after the "Settings Version" block (0x00A160..0x00A16F), in the
+// same settings sector, mapped through eeprom_compat.c for backups:
+//   byte 0      enabled flag (0/1), loaded into gEeprom.BOOT_MORSE; 0xFF means the
+//               block was never written and triggers the one-time migration below
+//   byte 1      speed index into the WPM table, loaded into gEeprom.BOOT_MORSE_WPM
+//   bytes 2..14 message (MORSE_MSG_MAX chars + NUL)
+//   byte 15     reserved
+#define MORSE_FLASH_ADDR 0x00A170u
 
-// Read the saved boot message from flash into out[MORSE_MSG_MAX + 1], sanitised
-// to the supported charset (space, A-Z, 0-9). Empty/corrupt flash yields "".
-void MORSE_LoadMessage(char *out);
+// Earlier builds stored the block at 0x00A0E8, which is actually the DTMF settings
+// (0ED0..0EDF, settings.c), corrupting DTMF side tone and timings. Only used by
+// the migration in MORSE_LoadSettings.
+#define MORSE_OLD_FLASH_ADDR 0x00A0E8u
+
+// Number of selectable speeds (see MORSE_GetWpm).
+#define MORSE_WPM_COUNT 4
+
+// Load flag, speed and message from flash (called from SETTINGS_InitEEPROM, after
+// the DTMF settings are loaded). Moves a message found at the old address, restoring
+// the DTMF settings it overwrote, the first time it runs.
+void MORSE_LoadSettings(void);
+
+// Persist gEeprom.BOOT_MORSE / BOOT_MORSE_WPM (called from SETTINGS_SaveSettings).
+void MORSE_SaveSettings(void);
+
+// Saved boot message, cached in RAM (never NULL, "" when empty).
+const char *MORSE_GetMessage(void);
 
 // Persist msg (truncated to MORSE_MSG_MAX chars) as the boot message.
 void MORSE_SaveMessage(const char *msg);
 
+// Words per minute for a speed index (0..MORSE_WPM_COUNT-1).
+uint8_t MORSE_GetWpm(uint8_t index);
+
 // Play msg once as CW through the speaker (BK4819 sidetone), no PTT/TX involved.
-// Blocks for the duration of the message; a keypress aborts it early.
+// Blocks for the duration of the message; a keypress aborts it within one element,
+// and the key is swallowed (waits for its release) so it doesn't act afterwards.
 void MORSE_PlayText(const char *msg);
 
 // Self-contained modal editor for the boot message: UP/DOWN cycles the character
@@ -53,8 +74,9 @@ void MORSE_EditMessage(void);
 void ACTION_MorseMsgEdit(void);
 
 // Play the saved boot message if the feature is enabled in gEeprom. Called from
-// the power-on sequence in place of (or alongside) the classic boot beep.
-void MORSE_PlayBootId(void);
+// the power-on sequence in place of the classic boot beep; returns false (nothing
+// played) when disabled or the message is empty, so the caller can beep instead.
+bool MORSE_PlayBootId(void);
 
 #endif // ENABLE_FEAT_F4HWN_BOOT_MORSE
 #endif // HELPER_MORSE_H

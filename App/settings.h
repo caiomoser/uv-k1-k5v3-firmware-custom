@@ -219,6 +219,7 @@ typedef struct {
     bool                  BEEP_CONTROL;
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
     bool                  BOOT_MORSE;
+    uint8_t               BOOT_MORSE_WPM;
 #endif
     uint8_t               CHANNEL_DISPLAY_MODE;
     bool                  TAIL_TONE_ELIMINATION;

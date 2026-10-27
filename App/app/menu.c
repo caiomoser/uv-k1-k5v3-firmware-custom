@@ -270,6 +270,12 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
             //*pMin = 0;
             *pMax = ARRAY_SIZE(gSubMenu_OFF_ON) - 1;
             break;
+#ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
+        case MENU_MORSE_WPM:
+            //*pMin = 0;
+            *pMax = MORSE_WPM_COUNT - 1;
+            break;
+#endif
         case MENU_AM:
             //*pMin = 0;
             *pMax = ARRAY_SIZE(gModulationStr) - 1;
@@ -708,6 +714,10 @@ void MENU_AcceptSetting(void)
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
         case MENU_PON_MORSE:
             gEeprom.BOOT_MORSE = gSubMenuSelection;
+            break;
+
+        case MENU_MORSE_WPM:
+            gEeprom.BOOT_MORSE_WPM = gSubMenuSelection;
             break;
 #endif
 
@@ -1237,6 +1247,10 @@ void MENU_ShowCurrentSetting(void)
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
         case MENU_PON_MORSE:
             gSubMenuSelection = gEeprom.BOOT_MORSE;
+            break;
+
+        case MENU_MORSE_WPM:
+            gSubMenuSelection = gEeprom.BOOT_MORSE_WPM;
             break;
 #endif
 

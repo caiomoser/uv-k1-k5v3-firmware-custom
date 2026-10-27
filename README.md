@@ -235,7 +235,8 @@ Fusion is the reference edition of the project. It provides an all-in-one firmwa
   - `SetScn`: scan mode,
   - `SetNav`: radio-specific navigation layout,
   - `PonCW`: play a custom Morse-code ID message on power-on,
-  - `MsgCW`: edit the boot Morse ID message.
+  - `MsgCW`: edit the boot Morse ID message,
+  - `WpmCW`: boot Morse ID speed (12, 15, 20 or 25 WPM).
 - Improved `PonMsg`, `BackLt`, `TxTOut`, `ScnRev` and `KeyLck` menus.
 - Full VFO state restoration with a long press on `EXIT`.
 - Squelch changes made with `F + UP` or `F + DOWN` are persisted.

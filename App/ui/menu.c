@@ -100,6 +100,7 @@ const t_menu_item MenuList[] =
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
     {"POnCW",       MENU_PON_MORSE     },
     {"MsgCW",       MENU_MSG_CW_EDIT   },
+    {"WpmCW",       MENU_MORSE_WPM     },
 #endif
     {"BLTime",      MENU_ABR           }, // was "ABR"
     {"BLMin",       MENU_ABR_MIN       },
@@ -633,7 +634,7 @@ static const uint8_t CatPower[]   = {
 };
 static const uint8_t CatDisplay[] = { MENU_MDF, MENU_PONMSG,
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
-    MENU_PON_MORSE, MENU_MSG_CW_EDIT,
+    MENU_PON_MORSE, MENU_MSG_CW_EDIT, MENU_MORSE_WPM,
 #endif
     MENU_ABR, MENU_ABR_MIN, MENU_ABR_MAX, MENU_ABR_ON_TX_RX, MENU_SET_CTR, MENU_SET_INV, MENU_SET_MET, MENU_SET_GUI, MENU_VOL };
 static const uint8_t CatTimers[]  = { MENU_TOT, MENU_SET_TOT, MENU_SET_EOT, MENU_SET_TMR };
@@ -1183,11 +1184,14 @@ void UI_DisplayMenu(void)
 
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
         case MENU_MSG_CW_EDIT: {
-            char msg[MORSE_MSG_MAX + 1];
-            MORSE_LoadMessage(msg);
+            const char *msg = MORSE_GetMessage();
             strcpy(String, msg[0] ? msg : "EMPTY");
             break;
         }
+
+        case MENU_MORSE_WPM:
+            sprintf(String, "%u WPM", MORSE_GetWpm(gSubMenuSelection));
+            break;
 #endif
 
 #if defined(ENABLE_FEAT_F4HWN) && defined(ENABLE_FEAT_F4HWN_LOGO_SAV)

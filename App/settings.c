@@ -515,11 +515,8 @@ gEeprom.FreqChannel[1]   = IS_FREQ_CHANNEL(Data16[5]) ? Data16[5] : (FREQ_CHANNE
     #endif
 
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
-    {
-        uint8_t morseEnabled = 0;
-        PY25Q16_ReadBuffer(MORSE_FLASH_ADDR, &morseEnabled, 1);
-        gEeprom.BOOT_MORSE = (morseEnabled == 1);
-    }
+    // Must run after the DTMF settings above: its one-time migration can reset them.
+    MORSE_LoadSettings();
 #endif
 }
 
@@ -1166,10 +1163,7 @@ void SETTINGS_SaveSettings(void)
 #endif
 
 #ifdef ENABLE_FEAT_F4HWN_BOOT_MORSE
-    {
-        const uint8_t morseEnabled = gEeprom.BOOT_MORSE ? 1 : 0;
-        PY25Q16_WriteBuffer(MORSE_FLASH_ADDR, &morseEnabled, 1, false);
-    }
+    MORSE_SaveSettings();
 #endif
 }
 
