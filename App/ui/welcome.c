@@ -361,7 +361,11 @@ void UI_DisplayWelcome(void)
         #endif
         */
 
+#ifdef MOD_STRING
+        sprintf(WelcomeString3, "%s %s", Edition, ModVersion);
+#else
         sprintf(WelcomeString3, "%s Edition", Edition);
+#endif
         UI_PrintStringSmallNormal(WelcomeString3, 0, 127, 6);
 
 #else

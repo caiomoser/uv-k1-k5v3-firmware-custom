@@ -28,4 +28,7 @@ extern const char Edition[];
 extern const char BuildDate[];
 extern const char BuildTime[];
 extern const char BuildCommit[];
+#ifdef MOD_STRING
+extern const char ModVersion[];
+#endif
 #endif

@@ -21,6 +21,11 @@ port for UV-K1 and UV-K5 V3 radios:
 The UV-K1 and UV-K5 V3 port is the result of joint work by muzkr and
 Armel / F4HWN.
 
+This product includes modifications by PU5CAI (Boot Morse ID, CW
+decoder and related changes), distributed as an unofficial fork:
+
+  https://github.com/caiomoser/uv-k1-k5v3-firmware-custom
+
 Additional attribution notices
 ------------------------------
 

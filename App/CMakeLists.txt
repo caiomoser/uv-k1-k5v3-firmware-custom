@@ -74,6 +74,9 @@ if(ENABLE_FEAT_F4HWN)
         "EDITION_STRING=\"${EDITION_STRING}\""
         ALERT_TOT=10
     )
+    if(MOD_STRING)
+        target_compile_definitions(App INTERFACE "MOD_STRING=\"${MOD_STRING}\"")
+    endif()
 endif()
 
 target_compile_definitions(App INTERFACE 

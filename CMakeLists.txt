@@ -82,6 +82,16 @@ else()
     set(DISPLAY_VERSION_STRING_2 "${VERSION_STRING_2}")
 endif()
 
+# Fork identity (shown on the boot screen and in the version menu). The UART
+# version string stays "F4HWN vX.Y.Z" so UV Studio and CHIRP keep recognising it.
+if(MOD_CALLSIGN)
+    if(NOT MOD_REVISION)
+        set(MOD_REVISION "1")
+    endif()
+    set(MOD_STRING "${MOD_CALLSIGN} r${MOD_REVISION}")
+    message("MOD_STRING = " ${MOD_STRING})
+endif()
+
 message("EXE_NAME = " ${EXE_NAME})
 message("Development build = " ${DEV})
 

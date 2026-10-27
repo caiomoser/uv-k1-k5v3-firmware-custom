@@ -1,3 +1,17 @@
+> [!IMPORTANT]
+> **Unofficial fork by PU5CAI.** This is a personal modification of the
+> [F4HWN firmware by Armel](https://github.com/armel/uv-k1-k5v3-firmware-custom), not an official release.
+> Please report problems with the features below here, not to the F4HWN project.
+>
+> - Version scheme: `F4HWN base` + `PU5CAI rN` (e.g. F4HWN v5.9.0, PU5CAI r1), shown on the boot screen and
+>   in the `SysInf` menu. The version reported over USB stays `F4HWN vX.Y.Z` so UV Studio and CHIRP keep working.
+> - Added features (Fusion edition): Boot Morse ID (`PonCW`, `MsgCW`, `WpmCW`) and the experimental CW Decoder.
+> - The Boot Morse ID settings use their own block at flash address `0x00A170`; switching back to the
+>   official firmware is safe, it simply ignores that block.
+>
+> _PT - Fork não oficial de PU5CAI, baseado no firmware F4HWN. Problemas com os recursos acima devem ser
+> relatados aqui, não ao projeto F4HWN._
+
 # Stats
 
 ![Alt](https://repobeats.axiom.co/api/embed/ecdd86aa536b716f088339a0c5ee734558f78c28.svg "Repobeats analytics image")

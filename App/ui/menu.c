@@ -1450,6 +1450,9 @@ void UI_DisplayMenu(void)
                 // Page 0: firmware identity.
 #ifdef ENABLE_FEAT_F4HWN
                 sprintf(String, "%s\n%s", AUTHOR_STRING_2, DISPLAY_VERSION_STRING_2);
+#ifdef MOD_STRING
+                UI_PrintStringSmallNormal(ModVersion, menu_item_x1 - 1, menu_item_x2, 5);
+#endif
                 UI_PrintStringSmallNormal(Edition, menu_item_x1 - 1, menu_item_x2, 6);
 #else
                 sprintf(String, "%u.%02uV\n%u%%",

@@ -12,6 +12,9 @@
     const char BuildDate[]       = __DATE__;
     const char BuildTime[]       = __TIME__;
     const char BuildCommit[]     = BUILD_COMMIT;
+    #ifdef MOD_STRING
+        const char ModVersion[]  = MOD_STRING;
+    #endif
 #else
     const char Version[]      = AUTHOR_STRING VER;
 #endif
